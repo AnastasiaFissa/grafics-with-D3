@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+
+
+<html>
+    <head>
+        <meta charset="utf-8">
+        <script src="http://d3js.org/d3.v3.min.js"></script>
+        <script type="text/javascript" src="jquery-2.2.0.js"></script>
+        <style>
+            .axis path, .axis line {
+                fill: none;
+                stroke: #333;
+            }
+            .axis .grid-line {
+                stroke: #000;
+                stroke-opacity: 0.2;
+            }
+            .axis text {
+                font: 10px Verdana;
+            }
+
+
+            .svg-container {
+			    display: inline-block;
+			    position: relative;
+			    width: 100%;
+			    padding-bottom: 100%; /* aspect ratio */
+			    vertical-align: top;
+			    overflow: hidden;
+			}
+			.svg-content-responsive {
+			    display: inline-block;
+			    position: absolute;
+			    top: 10px;
+			    left: 0;
+			}
+        </style>
+    <body>
+        <dix class='chart'>
+        <div id="chart"></div>
+        <ul class="active_table">
+        </ul>
+        </div>
+        <input type="hidden" class="graphic_id" value='{"x": 0, "y": 35},{"x": 50, "y": 166},{"x": 300, "y": 74}' name="График1">
+        <input type="hidden" class="graphic_id" value='{"x": 0, "y": 55},{"x": 50, "y": 87},{"x": 300, "y": 66}' name="График2">
+        <input type="hidden" class="graphic_id" value='{"x": 0, "y": 5},{"x": 10, "y": 47},{"x": 320, "y": 24}' name="График3">
+        X:<input class="grafic_x" value=''>
+        Y:<input class="grafic_y" value=''>
+        <script type="text/javascript">
+
+
+            $(document).ready(function () {
+
+                if ($('.graphic_id').val()) {
+                /**
+                 * check max and min numbers of graph
+                 * @type type
+                 */
+                var max_final_X = [];
+                var max_final_Y = [];
+                $('.graphic_id').each(function (index, item) {
+                    var massiv = eval('[' + item.value + ']');
+                    var itemsX = [];
+                    var itemsY = [];
+                    massiv.forEach(function (item, index) {
+                        itemsX.push(item.x);
+                        itemsY.push(item.y);
+                    });
+                    maxX = itemsX[0];
+                    for (i = 0; i < itemsX.length; i++) {
+                        if (itemsX[i] > maxX) {
+                            maxX = itemsX[i];
+                        }
+                    }
+                    maxY = itemsY[0];
+                    for (i = 0; i < itemsY.length; i++) {
+                        if (itemsY[i] > maxY) {
+                            maxY = itemsY[i];
+                        }
+                    }
+                    
+                    max_final_X.push(maxX);
+                    maxX = max_final_X[0];
+                    for (i = 0; i < max_final_X.length; i++) {
+                        if (max_final_X[i] > maxX) {
+                            maxX = max_final_X[i];
+                        }
+                    }
+                    
+                    max_final_Y.push(maxY);
+                    maxY = max_final_Y[0];
+                    for (i = 0; i < max_final_Y.length; i++) {
+                        if (max_final_Y[i] > maxY) {
+                            maxY = max_final_Y[i];
+                        }
+                    }
+                    
+                });
+
+                
+                /*Init graph*/
+
+                var graph = function () {
+
+                    /**
+                     * @param {number} height of graph
+                     */
+                    this.height = 650;
+
+                    /**
+                     * @param {number} width of graph
+                     */
+                    this.width = 650;
+
+                    /**
+                     * @param {number} margin of graph
+                     */
+                    this.margin = 40;
+
+                    /**
+                     * @param {number} firstNumber
+                     * first cell of grid
+                     */
+                    this.firstNumber = 0;
+
+                    /**
+                     * @param {number} lastNumber
+                     * last cell of grid
+                     */
+                    this.lastNumberX = maxX;
+
+                    /**
+                     * @param {number} lastNumber
+                     * last cell of grid
+                     */
+                    this.lastNumberY = maxY;
+
+                    /**
+                     * @param {string} legendX
+                     */
+                    this.legendX = "Ось X";
+
+                    /**
+                     * @param {string} legendY
+                     */
+                    this.legendY = "Ось Y";
+
+                    /**
+                     * @param {string} title
+                     */
+                    this.title = "График значений";
+
+                    this.object_graph = [];
+                };
+                /**
+                 * 
+                 * @param {type} $obj
+                 * @returns {test_three_L8.graph.prototype}
+                 */
+                graph.prototype.addGraph = function ($obj) {
+                    this.object_graph.push($obj);
+                    return this;
+                };
+
+                var myGraph = new graph();
+
+                //if ($('.graphic_id').val()) {
+                    $('.graphic_id').each(function (index, item) {
+                        myGraph.addGraph({
+                            li_caption: $(this).attr('name'),
+                            rawData:
+                                    eval('[' + item.value + ']')
+                        });
+                    });
+                //}
+                
+
+                /* Init svg */
+                var svg = d3.select("#chart").append("svg")
+                        .attr("class", "axis")
+                        .attr("width", myGraph.width)
+                        .attr("height", myGraph.height);
+
+                /**
+                 * 
+                 * @type graph.margin|Number|graph.width
+                 */
+                var xAxisLength = myGraph.width - 2 * myGraph.margin;
+
+                /**
+                 * 
+                 * @type graph.height|Number|graph.margin
+                 */
+                var yAxisLength = myGraph.height - 2 * myGraph.margin;
+
+                /**
+                 * @param scaleX
+                 * @returns undefined
+                 */
+                var scaleX = d3.scale.linear()
+                        .domain([myGraph.firstNumber, myGraph.lastNumberX])
+                        .range([myGraph.firstNumber, xAxisLength]);
+
+                /**
+                 * @param scaleY
+                 * @returns undefined
+                 */
+                var scaleY = d3.scale.linear()
+                        .domain([myGraph.lastNumberY, myGraph.firstNumber])
+                        .range([myGraph.firstNumber, yAxisLength]);
+
+                /**
+                 *
+                 * @type Array
+                 * creates array {data_new} of arrays
+                 */
+                var data_new = [];
+
+                for (i = 0; i < myGraph.object_graph.length; i++)
+                    data_new[i] = [];
+
+                /**
+                 * 
+                 * @param {array} item
+                 * @param {number} index
+                 * @returns {underfined}
+                 */
+                myGraph.object_graph.forEach(function (item, index) {
+                    for (i = 0; i < item.rawData.length; i++)
+                        data_new[index].push({x: scaleX(item.rawData[i].x) + myGraph.margin, y: scaleY(item.rawData[i].y) + myGraph.margin});
+                });
+
+               /**
+                * 
+                * @returns {underfined}
+                * creates <li> for each path
+                */
+               for (i = 0; i < myGraph.object_graph.length; i++)
+                   $('.active_table').append('<li data-id="' + i + '">' + myGraph.object_graph[i].li_caption + '</li>');
+
+                /**
+                 * 
+                 * @type function
+                 * @returns {underfined}
+                 */
+                function createAxesAndGridLines() {
+                    var xAxis = d3.svg.axis()
+                            .scale(scaleX)
+                            .orient("bottom");
+
+                    var yAxis = d3.svg.axis()
+                            .scale(scaleY)
+                            .orient("left");
+
+                    svg.append("g")
+                            .attr("class", "x-axis")
+                            .attr("transform",
+                                    "translate(" + myGraph.margin + "," + (myGraph.height - myGraph.margin) + ")")
+                            .call(xAxis);
+
+                    svg.append("g")
+                            .attr("class", "y-axis")
+                            .attr("transform",
+                                    "translate(" + myGraph.margin + "," + myGraph.margin + ")")
+                            .call(yAxis);
+
+                    d3.selectAll("g.x-axis g.tick")
+                            .append("line")
+                            .classed("grid-line", true)
+                            .attr("x1", 0)
+                            .attr("y1", 0)
+                            .attr("x2", 0)
+                            .attr("y2", -(myGraph.height - 2 * myGraph.margin));
+
+                    d3.selectAll("g.y-axis g.tick")
+                            .append("line")
+                            .classed("grid-line", true)
+                            .attr("x1", 0)
+                            .attr("y1", 0)
+                            .attr("x2", xAxisLength)
+                            .attr("y2", 0);
+
+                    //title
+                    svg.append('g').append("text")
+                            .attr("x", (myGraph.width / 2))
+                            .attr("y", myGraph.margin - 10)
+                            .attr("text-anchor", "middle")
+                            .style("font-size", "22px")
+                            .text(myGraph.title);
+
+                    //legendX
+                    svg.append('g').append("text")
+                            .attr("x", (myGraph.width / 2))
+                            .attr("y", myGraph.height - 5)
+                            .attr("text-anchor", "end")
+                            .style("font-size", "12px")
+                            .text(myGraph.legendX);
+
+                    //legendY
+                    svg.append('g').append("text")
+                            .attr("x", myGraph.margin + 10)
+                            .attr("y", myGraph.margin - 10)
+                            .attr("text-anchor", "end")
+                            .style("font-size", "12px")
+                            .attr("transform", "rotate(270, " + (myGraph.width / (3.5) - 10) + "," + (myGraph.height / (3.3)) + ")")
+                            .text(myGraph.legendY);
+
+                }
+                createAxesAndGridLines();
+
+                /**
+                 * 
+                 * @returns {undefined}
+                 * create area chart 
+                 * charts on hover hightlight it'self and the same <li>
+                 */
+                function createArea() {
+
+                    var area = d3.svg.area().interpolate("basis")
+                            .x(function (d) {
+                                return d.x;
+                            })
+                            .y0(myGraph.height - myGraph.margin)
+                            .y1(function (d) {
+                                return d.y;
+                            });
+
+                    var g = svg.append("g");
+
+                    for (i = 0; i < data_new.length; i++)
+                        g.append("path")
+                                .attr("d", area(data_new[i]))
+                                .style("fill", "rgb(12, 77, 161)")
+                                .style("opacity", 0.6)
+                                .attr('class', 'graph' + i)
+                                .attr('data-id', i)
+                                ;
+
+                    d3.selectAll('path')
+
+                            .on("mouseover", function () {
+
+                                if (d3.select(this).attr('data-id')) {
+                                    d3.select(this).style('fill', 'rgb(127, 211, 255)');
+                                    $('.active_table li[data-id="' + d3.select(this).attr('data-id') + '"]').css('background', 'rgb(127, 211, 255)');
+                                }
+                            })
+                            .on("mouseout", function () {
+
+                                if (d3.select(this).attr('data-id')) {
+                                    d3.select(this).style('fill', 'rgb(12, 77, 161)');
+                                    $('.active_table li[data-id="' + d3.select(this).attr('data-id') + '"]').css('background', 'inherit');
+                                }
+                            });
+                }
+                createArea();
+
+                /**
+                 * 
+                 * @returns {undefined}
+                 * create tooltip with value of x,y coordinates
+                 * show vertical/gorizontal lines on mousemove
+                 */
+                function createTooltip() {
+                    var tooltip = d3.select("body")
+                            .append("div")
+                            .style("position", "absolute")
+                            .style("visibility", "hidden")
+                            ;
+
+                    var verticalLine = svg.append('line')
+                            .attr({
+                                'x1': myGraph.margin,
+                                'y1': myGraph.margin,
+                                'x2': myGraph.margin,
+                                'y2': myGraph.height - (myGraph.margin)
+                            });
+
+                    var horizontalLine = svg.append('line')
+                            .attr({
+                                'x1': myGraph.width - myGraph.margin,
+                                'y1': myGraph.height - myGraph.margin,
+                                'x2': myGraph.margin,
+                                'y2': myGraph.height - myGraph.margin
+                            });
+
+                    d3.select('svg')
+
+                            .on("mousemove", function () {
+                                tooltip.style("visibility", "visible");
+                                tooltip.style("top", (d3.event.pageY) + "px").style("left", (d3.event.pageX + 20) + "px");
+                                var mouse = d3.mouse(this);
+                                var x = Math.round(scaleX.invert(mouse[0] - myGraph.margin));
+                                var y = Math.round(scaleY.invert(mouse[1] - myGraph.margin));
+                                tooltip.text('x=' + x + ' y=' + y);
+                                verticalLine.attr("x1", mouse[0] - 20).attr("x2", mouse[0] - 20).style("opacity", 1);
+                                horizontalLine.attr("y1", mouse[1] - 20).attr("y2", mouse[1] - 20).style("opacity", 1);
+                            })
+                            .on("mouseout", function () {
+                                tooltip.style("visibility", "hidden");
+                                verticalLine.style("opacity", 0);
+                                horizontalLine.style("opacity", 0);
+                            });
+                }
+                createTooltip();
+
+                /**
+                 * 
+                 * @returns {undefined}
+                 * li on hover highligt the same chart 
+                 */
+                function liOnHoverHighlight() {
+
+                    $('.active_table li').mouseover(function () {
+
+                        var i = $(this).attr('data-id');
+                        $(this).css('background', 'rgb(127, 211, 255)');
+                        d3.selectAll('.graph' + i)
+                                .style("fill", "rgb(127, 211, 255)")
+                                .style("opacity", 0.6);
+
+                    });
+                    $('.active_table li').mouseout(function () {
+
+                        var i = $(this).attr('data-id');
+                        $('.active_table li').css('background', 'inherit');
+                        d3.selectAll('.graph' + i)
+                                .style("fill", "rgb(12, 77, 161)")
+                                .style("opacity", 0.6);
+                    });
+
+                }
+                liOnHoverHighlight();
+
+                //make graph responsible
+                d3.select(".chart")
+                    .append("div")
+                    .classed("svg-container", true) //container class to make it responsive
+                    .append("svg")
+                    //responsive SVG needs these 2 attributes and no width and height attr
+                    .attr("preserveAspectRatio", "xMinYMin meet")
+                    .attr("viewBox", "0 0 600 400")
+                    //class to make it responsive
+                    .classed("svg-content-responsive", true); 
+                
+
+
+                 
+                /**
+                *
+                *@returns {undefined}
+                *onclick create tooltip and dot with coordinates  
+                */
+                svg.on('click', function() {
+                            var coords = d3.mouse(this);
+                            var x = Math.round(scaleX.invert(coords[0] - myGraph.margin));
+                            var y = Math.round(scaleY.invert(coords[1] - myGraph.margin));
+                            
+                            //remove previous tooltip, dot, lines
+                            d3.selectAll(".tool").remove();
+
+                            svg.append("circle")
+                            .attr('class', 'click-circle')
+                            .attr("cx", coords[0])
+                            .attr("cy", coords[1])
+                            .attr("r", '3')
+                            .attr("class","tool")
+                            ;
+
+                            //tooltip
+                            var tooltip = d3.select("body")
+                            .append("div")
+                            .style("position", "absolute")
+                            .style("visibility", "visible")
+                            .style("top", (d3.event.pageY - 20) + "px").style("left", (d3.event.pageX - 30) + "px");
+                            
+                            tooltip.text('('+ x + ',' + y+ ')'); 
+                            tooltip.attr("class", "tool");
+
+                            //vertical line
+                            var vertical = svg.append('line')
+                            .attr({
+                                'x1': coords[0],
+                                'y1': coords[1],
+                                'x2': coords[0],
+                                'y2': myGraph.height - (myGraph.margin)
+                                
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+                            
+                            //horizontal line
+                            var horizontal = svg.append('line')
+                            .attr({
+                                'x1': myGraph.margin,
+                                'y1': coords[1],
+                                'x2': coords[0],
+                                'y2': coords[1]
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+                        
+                           $('.grafic_x').val(x);
+                           $('.grafic_y').val(y);
+
+                            /**
+                            *create parabola
+                            */
+                            var n = y/(x*x);
+                            var data = [];
+                            var x = [];
+                            var y = [];
+                            for(i=0; i<maxX; i++){
+                                x[i] = i;
+                                y[i] = n*(x[i]*x[i]);
+                                data.push({x: x[i], y:y[i]});
+                            }
+                            
+                            var valueline = d3.svg.line()
+                                .x(function (d) { return scaleX(d.x)+myGraph.margin }) 
+                                .y(function (d) { return scaleY(d.y)+myGraph.margin })
+                                .interpolate("basis");
+                            var parabola = svg.append("path")     
+                            .attr("class", "line")
+                            .attr("d", valueline(data))
+                            .attr("class","tool");
+
+                            //
+                            var path = null;
+                            $('.graphic_id').each(function (index, item) {
+                                var massiv = eval('[' + item.value + ']');
+                                
+                                   for(i=0; i<massiv.length; i++){
+                                        if(massiv[i].y == maxY){
+                                            path = eval('[' + item.value + ']');
+                                        }
+                                   }
+                            });
+                            
+                            for(a=0; a<data.length; a++){
+                                data[a].y = Math.round(data[a].y);
+                               
+
+                                
+
+                                if(path[a]==data[a]){
+                                    console.log('e');
+                                }
+                               
+
+                            }
+
+                            
+                        });
+
+
+                        $('.grafic_x').keyup(function(){
+                            
+                            //remove previous tooltip, dot, lines
+                            d3.selectAll(".tool").remove();
+
+                             var x = $(this).val();
+                             var y = $('.grafic_y').val();
+                        
+                            svg.append("circle")
+                            .attr('class', 'click-circle')
+                            .attr("cx", scaleX(x)+myGraph.margin)
+                            .attr("cy", scaleY(y)+myGraph.margin)
+                            .attr("r", '3')
+                            .attr("class","tool")
+                            ;
+
+                            //tooltip
+                            var tooltip = d3.select("body")
+                            .append("div")
+                            .style("position", "absolute")
+                            .style("visibility", "visible")
+                            .style("top", scaleY(y)-20+myGraph.margin+'px').style("left", scaleX(x)-20+myGraph.margin+'px');
+                            
+                            tooltip.text('('+ x + ',' + y+ ')'); 
+                            tooltip.attr("class", "tool");
+
+                            //vertical line
+                            var vertical = svg.append('line')
+                            .attr({
+                                'x1': scaleX(x)+myGraph.margin,
+                                'y1': scaleY(y)+myGraph.margin,
+                                'x2': scaleX(x)+myGraph.margin,
+                                'y2': myGraph.height - (myGraph.margin)
+                                
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+
+                            //horizontal line
+                            var horizontal = svg.append('line')
+                            .attr({
+                                'x1': myGraph.margin,
+                                'y1': scaleY(y)+myGraph.margin,
+                                'x2': scaleX(x)+myGraph.margin,
+                                'y2': scaleY(y)+myGraph.margin
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+                           
+                        });
+
+                        $('.grafic_y').keyup(function(){
+                            
+                            //remove previous tooltip, dot, lines
+                            d3.selectAll(".tool").remove();
+
+                             var x = $('.grafic_x').val();
+                             var y = $(this).val();
+                        
+                            svg.append("circle")
+                            .attr('class', 'click-circle')
+                            .attr("cx", scaleX(x)+myGraph.margin)
+                            .attr("cy", scaleY(y)+myGraph.margin)
+                            .attr("r", '3')
+                            .attr("class","tool")
+                            ;
+
+                            //tooltip
+                            var tooltip = d3.select("body")
+                            .append("div")
+                            .style("position", "absolute")
+                            .style("visibility", "visible")
+                            .style("top", scaleY(y)-20+myGraph.margin+'px').style("left", scaleX(x)-20+myGraph.margin+'px');
+                            
+                            tooltip.text('('+ x + ',' + y+ ')'); 
+                            tooltip.attr("class", "tool");
+
+                            //vertical line
+                            var vertical = svg.append('line')
+                            .attr({
+                                'x1': scaleX(x)+myGraph.margin,
+                                'y1': scaleY(y)+myGraph.margin,
+                                'x2': scaleX(x)+myGraph.margin,
+                                'y2': myGraph.height - (myGraph.margin)
+                                
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+
+                            //horizontal line
+                            var horizontal = svg.append('line')
+                            .attr({
+                                'x1': myGraph.margin,
+                                'y1': scaleY(y)+myGraph.margin,
+                                'x2': scaleX(x)+myGraph.margin,
+                                'y2': scaleY(y)+myGraph.margin
+                            })
+                            .attr("class", "tool")
+                            .style("opacity", 1)
+                            .style("stroke-dasharray", ("3, 3"))
+                            ;
+                           
+                        });
+
+
+                
+}
+
+
+});
+
+
+
+
+
+
+
+        </script>
+
+    </body>
+</html>
+
+
+
